@@ -49,9 +49,12 @@ local function writeToken()
   }, '|')
   local token = LrMD5.digest(seed)
 
+  -- writeBinaryFile, not writeFile: the latter does not exist in the SDK, and
+  -- because this call is wrapped in pcall the failure was silent - the bridge
+  -- just kept running with no token and loopback-only auth.
   LrTasks.pcall(function()
     LrFileUtils.createAllDirectories(Config.tempDir())
-    LrFileUtils.writeFile(Config.tokenPath(), token)
+    LrFileUtils.writeBinaryFile(Config.tokenPath(), token)
   end)
   state.token = token
 end

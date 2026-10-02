@@ -11,13 +11,16 @@
 // than failing to work at all.
 
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 
 export const PLUGIN_NAME = 'lightroom-classic-mcp';
 const MAX_BODY_BYTES = 32 * 1024 * 1024;
+// A live instance rewrites its port file on start, so anything older than this
+// belongs to a process that is gone. See publishedPort().
+const STALE_PORT_FILE_MS = 24 * 60 * 60 * 1000;
 
 export function stateDir() {
   // Overridable so tests (and unusual temp setups) never collide with a real
@@ -34,10 +37,21 @@ export function portFilePath() {
   return path.join(stateDir(), 'port');
 }
 
-/** The port the plug-in is actually polling, or null if nothing published one. */
-function publishedPort() {
+/**
+ * The port the plug-in is actually polling, or null if nothing published one.
+ * Exported so scripts can find the owning instance without duplicating the
+ * staleness rules.
+ */
+export function publishedPort() {
   try {
-    const raw = readFileSync(portFilePath(), 'utf8').trim();
+    const file = portFilePath();
+    // A crashed or SIGKILLed instance never runs close(), so its port file
+    // outlives it. Treat a stale file as absent: otherwise a fresh instance
+    // reads the dead one's port, concludes it does not own the port, and
+    // proxies to a peer that is not there.
+    const ageMs = Date.now() - statSync(file).mtimeMs;
+    if (ageMs > STALE_PORT_FILE_MS) return null;
+    const raw = readFileSync(file, 'utf8').trim();
     const port = Number(raw);
     return Number.isInteger(port) && port > 0 && port <= 65535 ? port : null;
   } catch {

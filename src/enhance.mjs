@@ -154,6 +154,11 @@ export function suggestSettings(stats, { profile = 'natural', strength = 1 } = {
   return {
     settings,
     changed,
+    // The exposure decision, in stops. Returned so callers can report what was
+    // actually decided rather than re-deriving it from the median - the old
+    // `exposureStops: stats.p50` field just duplicated medianLuma under a
+    // misleading name.
+    exposureEv,
     reason: changed
       ? `median luma ${(stats.p50 * 100).toFixed(0)}%, contrast (std) `
         + `${(stats.stdLuma * 100).toFixed(0)}%, clipped highlights `

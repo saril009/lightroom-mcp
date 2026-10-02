@@ -23,11 +23,21 @@ const fail = (err) => ({
 const uuidList = () =>
   z.union([z.string(), z.array(z.string())]).optional().describe(PHOTOS_DESC);
 
-/** Renders one preview and returns { data (base64), path, width, height }. */
-async function readPreview(bridge, { uuid, longEdge = 1200, destDir = previewDir() }) {
+/**
+ * Renders one preview and returns { buffer, path, bytes }.
+ * Set includeBase64 to also get the base64 payload - only render_preview needs
+ * it, so auto_enhance's per-photo loop no longer pays for a large string it
+ * never reads.
+ */
+async function readPreview(bridge, { uuid, longEdge = 1200, destDir = previewDir(), includeBase64 = false }) {
   const result = await bridge.call('render_preview', { photos: [uuid], longEdge, destDir });
   const buffer = readFileSync(result.path);
-  return { buffer, base64: buffer.toString('base64'), path: result.path, bytes: result.bytes };
+  return {
+    buffer,
+    path: result.path,
+    bytes: result.bytes,
+    ...(includeBase64 ? { base64: buffer.toString('base64') } : {}),
+  };
 }
 
 /** Reads the pixel dimensions out of a JPEG header (no decoding needed). */
@@ -179,6 +189,7 @@ export function buildTools(bridge) {
           const preview = await readPreview(bridge, {
             uuid,
             longEdge: args.longEdge ?? 1200,
+            includeBase64: true,
           });
           const size = jpegSize(preview.buffer);
           return {
@@ -291,7 +302,9 @@ export function buildTools(bridge) {
                 contrast: Number(analysis.stats.stdLuma.toFixed(3)),
                 clippedHighlightsPct: Number((analysis.stats.clippedHigh * 100).toFixed(2)),
                 meanSaturation: Number(analysis.stats.meanSaturation.toFixed(3)),
-                exposureStops: Number(analysis.stats.p50.toFixed(3)),
+                // Stops of exposure the heuristic decided on (negative = pull
+                // back). Was previously the median luma under this name.
+                exposureStops: Number((analysis.exposureEv ?? 0).toFixed(2)),
               },
               proposed: analysis.settings,
               reason: analysis.reason,

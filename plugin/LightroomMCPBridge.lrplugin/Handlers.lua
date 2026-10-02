@@ -1536,8 +1536,11 @@ function Handlers.render_preview(args)
   local safeId = string.gsub(uuid, '[^%w%-]', '_')
   local outPath = LrPathUtils.child(destDir, 'preview_' .. safeId .. '.jpg')
 
+  -- NB: the SDK entry point is writeBinaryFile. There is no LrFileUtils.writeFile;
+  -- calling it fails at run time with "attempt to call field 'writeFile' (a nil value)"
+  -- even though it is perfectly valid Lua, so luaparse cannot catch it.
   local okWrite, writeResult = LrTasks.pcall(function()
-    return LrFileUtils.writeFile(outPath, data)
+    return LrFileUtils.writeBinaryFile(outPath, data)
   end)
   if not okWrite then
     return nil, 'Could not write preview file: ' .. tostring(writeResult)
@@ -1589,14 +1592,16 @@ function Handlers.export_photos(args)
     LR_export_useSubfolder = false,
     LR_reimportExportedPhoto = false,
     -- Valid values (SDK guide): ask | rename | overwrite | skip. "ask" would
-    -- pop a dialog and block the agent, so it is opt-in only.
+    -- pop a dialog and block the agent, so it is opt-in only. Default is
+    -- "rename" rather than "overwrite": an agent re-running an export should
+    -- never silently destroy an earlier file it wrote.
     LR_collisionHandling = (function()
-      local wanted = lstr(args.collision or 'overwrite')
+      local wanted = lstr(args.collision or 'rename')
       if wanted == 'ask' or wanted == 'rename' or wanted == 'skip'
         or wanted == 'overwrite' then
         return wanted
       end
-      return 'overwrite'
+      return 'rename'
     end)(),
     LR_export_colorSpace = (args.colorSpace == 'adobeRGB') and 'AdobeRGB' or 'sRGB',
   }

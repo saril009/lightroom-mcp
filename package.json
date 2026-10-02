@@ -16,6 +16,7 @@
     "start": "node src/server.mjs",
     "install-plugin": "node src/install-plugin.mjs",
     "check": "node scripts/check.mjs",
+    "live-check": "node scripts/live-check.mjs",
     "test": "node scripts/check.mjs && node scripts/smoke.mjs"
   },
   "engines": {

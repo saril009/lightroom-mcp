@@ -1,0 +1,32 @@
+{
+  "name": "lightroom-classic-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets AI agents search, edit, auto-enhance and export photos in Adobe Lightroom Classic",
+  "type": "module",
+  "license": "UNLICENSED",
+  "bin": {
+    "lightroom-classic-mcp": "src/server.mjs"
+  },
+  "files": [
+    "src",
+    "plugin",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node src/server.mjs",
+    "install-plugin": "node src/install-plugin.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node scripts/check.mjs && node scripts/smoke.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "jpeg-js": "^0.4.4",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "luaparse": "^0.3.1"
+  }
+}
